@@ -1,0 +1,14 @@
+Team Members:
+Ali Sulieman - ahsuliem@uno.edu
+Ali Zaini - azaini@uno.edu
+Brandon Cordova - bmcordov@uno.edu
+Gregory Kessler - gskessle@uno.edu
+
+Brandon Cordova Summary:
+
+The most challenging part of the project was determining which
+tables belonged in each database. Understanding the importance
+of primary keys and how one relation depends on another
+was a key learning skill in this project.It was an intereseting experience
+creating a database from scratch and applying our knowledge
+of queries to create a functional database to use.

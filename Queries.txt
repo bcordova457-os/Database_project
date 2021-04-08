@@ -1,0 +1,613 @@
+--GV QUERIES:
+
+--1:
+SELECT *
+FROM PERSON
+ORDER BY LAST_NAME;
+
+--2:
+SELECT *
+FROM PERSON, JOB
+WHERE JOB.PER_ID = PERSON.PER_ID AND JOB.PAY_TYPE = 'salary'
+ORDER BY JOB.PAY_RATE DESC;
+--3:
+WITH ANNUAL_PAY (FAC_ID, PAY_RATE) AS
+	(SELECT FAC_ID,
+		CASE
+			WHEN PAY_TYPE = 'salary' THEN PAY_RATE
+			ELSE PAY_RATE * 1920
+		END
+	FROM JOB)
+SELECT FAC_ID, AVG(PAY_RATE) AS AVG_PAY
+FROM ANNUAL_PAY
+GROUP BY FAC_ID
+ORDER BY AVG_PAY DESC;
+--4:
+
+SELECT POS_CODE, LISTAGG(SKILL.TITLE, ', ') WITHIN GROUP(ORDER BY SKILL.TITLE) AS SKILLS_NEEDED
+FROM REQUIRES
+NATURAL JOIN SKILL
+GROUP BY POS_CODE
+HAVING POS_CODE = 'p_a1b554cde1234f77';
+
+--5:
+SELECT PER_ID, LISTAGG(SKILL.TITLE, ', ') WITHIN GROUP(ORDER BY SKILL.TITLE) AS 
+FROM HAS_SKILL
+NATURAL JOIN SKILL
+GROUP BY PER_ID
+HAVING PER_ID = 1234567;
+
+
+
+
+
+--6:
+SELECT POS_CODE, LISTAGG(SKILL.TITLE, ', ') WITHIN GROUP(ORDER BY SKILL.TITLE) AS MISSING_SKILLS
+FROM REQUIRES
+NATURAL JOIN SKILL
+WHERE SKILL.TITLE NOT IN(
+	SELECT SKILL.TITLE
+	FROM HAS_SKILL
+	NATURAL JOIN SKILL
+	WHERE PER_ID = 2487235) AND POS_CODE = 'p_an99elkja334j91q'
+GROUP BY POS_CODE;
+
+
+--10:
+SELECT CUS_ID, SUM(SALE_AMOUNT) AS TOTAL_SALES
+FROM CONTRACT
+WHERE THE_DATE = 2018
+GROUP BY CUS_ID;
+
+--11:
+WITH SUM_QUANTITIES(M_CODE, TOTAL) AS
+	(SELECT M_CODE, SUM(QUANTITY)
+	FROM PURCHASELINE NATURAL JOIN PURCHASE
+	WHERE BOOK_DATE >= DATE '2018-10-01'
+		AND BOOK_DATE <= DATE '2018-12-31'
+	GROUP BY M_CODE),
+MAX_QUANTITY (TOTAL) AS
+	(SELECT MAX(TOTAL)
+	FROM SUM_QUANTITIES)
+SELECT M_CODE, M_NAME
+FROM MATERIAL NATURAL JOIN SUM_QUANTITIES NATURAL JOIN MAX_QUANTITY;
+
+--12:
+WITH SALES_PER_PRODUCT(P_CODE, QUANTITY) AS
+    (SELECT P_CODE, SUM(QUANTITY)
+     FROM LINEITEM NATURAL JOIN CONTRACT
+     WHERE THE_DATE = '2018'
+     GROUP BY P_CODE),
+MOST_PRODUCT(P_CODE) AS
+    (SELECT P_CODE
+     FROM SALES_PER_PRODUCT
+     WHERE QUANTITY = 
+     	(SELECT MAX(QUANTITY)
+     	FROM SALES_PER_PRODUCT)),
+producers(fac_id, P_CODE, QUANTITY) AS
+    (SELECT fac_id, P_CODE, QUANTITY
+     FROM MAKES NATURAL JOIN MOST_PRODUCT)
+SELECT FAC_NAME
+FROM producers NATURAL JOIN FACTORY
+WHERE QUANTITY = (SELECT MAX(QUANTITY)
+                  FROM producers);
+
+
+
+--AZ QUERIES:
+
+--1
+SELECT person.per_id AS ID, firstname, lastname
+FROM person, works
+WHERE person.per_id=works.per_id
+ORDER BY person.lastname;
+
+--2
+SELECT person.per_id, firstname, lastname, pay_rate
+FROM person, works, job 
+WHERE job.pay_type = 'salary'
+AND person.per_id = works.PER_ID 
+AND works.job_code = job.job_code
+ORDER BY job.pay_rate DESC;
+
+--3
+SELECT job.store_id, avg(pay_rate) AS payRate
+FROM job, store
+WHERE store.store_id = job.store_id
+AND pay_type = 'salary'
+GROUP BY job.store_id;
+
+--4
+SELECT pos_code, LISTAGG(skill.sk_title, ', ') 
+WITHIN GROUP(ORDER BY skill.sk_title) AS requiredSkill
+FROM requires, skill
+WHERE requires.sk_code = skill.sk_code
+GROUP BY pos_code
+HAVING pos_code = '300119';
+
+--5
+SELECT has_skill.per_id, firstname, sk_title
+FROM HAS_SKILL, skill, person
+WHERE has_skill.sk_code = skill.sk_code
+AND person.per_id = has_skill.per_id
+AND has_skill.per_id = 447813;
+
+--6
+SELECT sk_description AS missingSkills
+FROM Has_skill NATURAL JOIN Skill NATURAL JOIN Requires
+WHERE per_id NOT IN (
+			SELECT per_id FROM Has_skill
+			WHERE per_id = 447813);
+		
+--7
+SELECT sum(price * quantity) AS sales, sale_date
+FROM Sales
+WHERE (sale_date > DATE '2020-01-01') AND (sale_date < DATE '2020-04-20' )
+GROUP BY sale_date
+ORDER BY sales;
+
+--8
+SELECT distinct item_num, MAX(quantity*price) AS totalProfit
+FROM Sales
+WHERE (sale_date > DATE '2020-01-01') AND (sale_date < DATE '2020-12-31')
+GROUP BY item_num;
+
+--9
+WITH minlvl (min_level,item_num) AS (SELECT min_level,item_num
+					FROM inventory),
+	 quant (quantity,item_num, sh_title) AS (SELECT quantity, item_num, sh_title
+						FROM inventory)
+SELECT quant.item_num, quant.sh_title, quantity, min_level 
+FROM minlvl, quant
+WHERE minlvl.item_num = quant.item_num
+AND quantity < min_level;
+
+
+
+
+--LD Queries:
+
+--13:
+
+SELECT "title"
+FROM "works" NATURAL JOIN "Job" NATURAL JOIN "Pos"
+WHERE "per_id" = 1342585;
+
+--14:
+
+SELECT "per_id", "first_name", "last_name", "title",
+extract (year FROM "start_date") AS "start_year",
+extract (year FROM "end_date") AS "end_year"
+FROM "Job" NATURAL JOIN "works" NATURAL JOIN "Person" NATURAL JOIN "Pos"
+WHERE "pos_code" = 'p_a1llj78ji4e3yt11';
+
+
+
+--15:
+
+WITH unemployed_holders ("per_id") AS
+	((SELECT "per_id"
+	FROM "Job" NATURAL JOIN "works"
+	WHERE "pos_code" = 'p_a1b554cde1234f77')
+	MINUS
+	(SELECT "per_id"
+	FROM "works"
+	WHERE "end_date" IS NULL
+	OR "end_date" > current_date))
+SELECT "per_id", "first_name", "last_name"
+FROM unemployed_holders NATURAL JOIN "Person";
+
+--16:
+
+WITH industry_companies ("parent_id", "comp_id") AS
+	(SELECT DISTINCT "parent_id", "comp_id"
+	FROM GICS NATURAL JOIN COMP_SUB_INDUS),
+industry_pay_rates ("parent_id", "pay_rate") AS
+	(SELECT "parent_id",
+	CASE
+		WHEN "pay_type" = 'wage' THEN "pay_rate" * 1920
+		ELSE "pay_rate"
+	END
+	FROM industry_companies NATURAL JOIN "Job"),
+industry_pay_stats ("parent_id", "avg_pay", "max_pay", "min_pay") AS
+	(SELECT "parent_id", AVG("pay_rate"), MAX("pay_rate"), MIN("pay_rate")
+	FROM industry_pay_rates
+	GROUP BY "parent_id")
+SELECT "parent_id", "ind_title", "avg_pay", "max_pay", "min_pay"
+FROM industry_pay_stats NATURAL JOIN GICS
+ORDER BY "ind_title";
+
+--17. 
+WITH current_employees ("comp_id", "per_id", "start_date", "end_date") AS
+	(SELECT "comp_id", "per_id", "start_date", "end_date"
+	FROM "Company" NATURAL JOIN "Job" NATURAL JOIN "works"
+	WHERE current_date >= "start_date"
+		AND (current_date <= "end_date"
+			OR "end_date" IS NULL)),
+employee_counts ("comp_id", "employee_count") AS 
+	(SELECT "comp_id", count (UNIQUE "per_id")
+	FROM current_employees
+	GROUP BY "comp_id")
+SELECT "comp_id","name", "employee_count"
+FROM employee_counts NATURAL JOIN "Company"
+WHERE "employee_count" = (SELECT MAX("employee_count")
+FROM employee_counts);
+
+WITH indus_comps ("ind_id", "comp_id") AS
+	(SELECT "ind_id", "comp_id"
+	FROM GICS natural join COMP_SUB_INDUS),
+employee_counts ("ind_id", "employee_count") AS
+	(SELECT "ind_id", COUNT(UNIQUE "per_id")
+	FROM indus_comps NATURAL JOIN "Job" NATURAL JOIN "works"
+	WHERE current_date >= "start_date"
+		AND (current_date <= "end_date"
+			OR "end_date" IS NULL)
+	GROUP BY "ind_id")
+SELECT "ind_id", "ind_title", "employee_count"
+FROM employee_counts NATURAL JOIN GICS
+WHERE "employee_count" = 
+	(SELECT MAX("employee_count")
+	FROM employee_counts);
+
+WITH grp_jobs ("industry_group", "job_code") AS
+	(SELECT "industry_group", "job_code"
+	FROM "Company" NATURAL JOIN "Job"),
+employee_counts ("industry_group", "employee_count") AS
+	(SELECT "industry_group", COUNT(UNIQUE "per_id")
+	FROM grp_jobs NATURAL JOIN "works"
+	WHERE current_date >= "start_date"
+		AND (current_date <= "end_date"
+			OR "end_date" IS NULL)
+	GROUP BY "industry_group")
+SELECT "industry_group", "employee_count"
+FROM employee_counts
+WHERE "employee_count" = (SELECT MAX("employee_count")
+FROM employee_counts);
+
+
+
+
+
+--18: 
+
+WITH employee_counts ("ind_id", "employee_count") AS
+	(SELECT "ind_id" , COUNT(UNIQUE "per_id")
+	FROM GICS NATURAL JOIN COMP_SUB_INDUS NATURAL JOIN "Job"
+	NATURAL JOIN "works"
+	WHERE "start_date" <= current_date
+		AND ("end_date" >= current_date
+			OR "end_date" IS NULL)
+	GROUP BY "ind_id")
+SELECT "ind_id", "ind_title", "employee_count"
+FROM employee_counts NATURAL JOIN GICS;
+
+--19:
+WITH missing_skills("sk_code") AS
+	((SELECT "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_ana33m55jj22j671')
+	MINUS
+	(SELECT "sk_code"
+	FROM "Has_Skill"
+	where "per_id" = 1342585)),
+missing_covers("c_code", "sk_code") AS
+	((SELECT "c_code", "sk_code"
+	FROM "Course", missing_skills)
+	MINUS
+	(SELECT "c_code", "sk_code"
+	FROM "teaches")),
+courses_without_missing("c_code") AS
+	((SELECT "c_code"
+	FROM "Course")
+	MINUS
+	(SELECT "c_code"
+	FROM missing_covers))
+SELECT "c_code", "title"
+FROM courses_without_missing NATURAL JOIN "Course";
+--20:
+WITH current_skills ("per_id", "sk_code") AS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill"
+	WHERE "per_id" = 1234567),
+unmet_requires("pos_code", "sk_code") AS
+	((SELECT "pos_code", "sk_code"
+	FROM "requires")
+	MINUS
+	(SELECT "pos_code", "sk_code"
+	FROM "Pos", current_skills)),
+qualified_pos("pos_code") AS
+	((SELECT "pos_code"
+	FROM "Pos")
+	MINUS
+	(SELECT "pos_code"
+	FROM unmet_requires)),
+potential_jobs("job_code") AS
+	(SELECT "job_code"
+	FROM qualified_pos NATURAL JOIN "Job"),
+unmet_req_by_job("job_code", "sk_code") AS
+	((SELECT "job_code", "sk_code"
+	FROM "req_by_job")
+	MINUS
+	(SELECT "job_code", "sk_code"
+	FROM potential_jobs, current_skills)),
+qualified_jobs("job_code") AS
+	((SELECT "job_code"
+	FROM potential_jobs)
+	MINUS
+	(SELECT "job_code"
+	FROM unmet_req_by_job)),
+rate_adjusted_jobs("job_code", "pay_rate") AS
+	(SELECT "job_code",
+	CASE
+		WHEN "pay_type" = 'wage' THEN "pay_rate" * 1920
+		ELSE "pay_rate"
+	END
+	FROM qualified_jobs NATURAL JOIN "Job")
+SELECT "job_code", "pay_rate"
+FROM rate_adjusted_jobs
+WHERE "pay_rate" = 
+	(SELECT MAX("pay_rate")
+	FROM rate_adjusted_jobs);
+
+--21:
+WITH current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_a1llj78ji4e3yt11'),
+unmet_requires("per_id", "sk_code") AS
+	((SELECT "per_id", "sk_code"
+	FROM current_requires, "Person")
+	MINUS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill")),
+qualified_people("per_id") AS
+	((SELECT "per_id"
+	FROM "Person")
+	MINUS
+	(SELECT "per_id"
+	FROM unmet_requires))
+SELECT "first_name", "last_name", "email"
+FROM "Person" NATURAL JOIN qualified_people;
+
+--22:
+WITH current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_a1llj78ji4e3yt11'),
+unmet_requires("per_id", "sk_code") AS
+	((SELECT "per_id", "sk_code"
+	FROM current_requires, "Person")
+	MINUS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill")),
+unmet_requirement_counts("per_id", "k") AS
+	(SELECT "per_id", COUNT("sk_code")
+	FROM unmet_requires
+	GROUP BY "per_id")
+SELECT "per_id", "first_name", "last_name", "email", "k"
+FROM unmet_requirement_counts NATURAL JOIN "Person"
+WHERE "k" < 4;
+
+--23:
+WITH current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_a1f774ppi4e3yt11'),
+unmet_requires("per_id", "sk_code") AS
+	((SELECT "per_id", "sk_code"
+	FROM current_requires, "Person")
+	MINUS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill")),
+unmet_requirement_counts("per_id", "k") AS
+	(SELECT "per_id", COUNT("sk_code")
+	FROM unmet_requires
+	GROUP BY "per_id"),
+leASt_missing_skills(min_skill_count) AS
+	(SELECT min("k")
+	FROM unmet_requirement_counts)
+SELECT "first_name", "last_name", "k" AS missing_skills
+FROM unmet_requirement_counts NATURAL JOIN "Person"
+WHERE "k" = 
+	(SELECT min_skill_count
+	FROM leASt_missing_skills);
+
+
+--24:
+WITH current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_ana33m55fg7juo11'),
+unmet_requires("per_id", "sk_code") AS
+	((SELECT "per_id", "sk_code"
+	FROM current_requires, "Person")
+	MINUS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill")),
+unmet_requirement_counts("per_id", "k") AS
+	(SELECT "per_id", COUNT("sk_code") AS k
+	FROM unmet_requires
+	GROUP BY "per_id"
+	HAVING COUNT("sk_code") < 4)
+SELECT "sk_code", COUNT(UNIQUE "per_id") AS "k_count"
+FROM unmet_requires NATURAL JOIN unmet_requirement_counts
+GROUP BY "sk_code"
+ORDER BY "k_count" ASC;
+
+--25:
+
+WITH industry_works("per_id", "job_code", "start_date", "end_date") AS
+	(SELECT "per_id", "job_code", "start_date", "end_date"
+	FROM "Company" NATURAL JOIN "Job" NATURAL JOIN "works"
+	WHERE "industry_group" = 101010),
+most_recent_ends("per_id", most_recent_end_date) AS
+	(SELECT "per_id", max("end_date")
+	FROM industry_works
+	WHERE "end_date" < current_date
+	GROUP BY "per_id"),
+adjusted_job_pays("per_id", "job_code", "start_date", "end_date", "pay_rate") AS
+	(SELECT "per_id", "job_code", "start_date", "end_date",
+		CASE
+			WHEN "pay_type" = 'wage' THEN "pay_rate" * 1920
+			ELSE "pay_rate"
+		END
+	FROM "Job" NATURAL JOIN industry_works),
+current_earnings("per_id", current_earnings) AS
+	(SELECT "per_id", sum("pay_rate")
+	FROM adjusted_job_pays
+	WHERE "start_date" <= current_date
+	AND ("end_date" >= current_date OR "end_date" IS NULL)
+	GROUP BY "per_id"),
+previous_earnings("per_id", previous_earnings) AS
+	(SELECT "per_id", sum("pay_rate")
+	FROM adjusted_job_pays NATURAL JOIN most_recent_ends
+	WHERE "start_date" <= most_recent_end_date
+	GROUP BY "per_id")
+SELECT count("per_id")
+FROM current_earnings NATURAL JOIN previous_earnings
+WHERE current_earnings > previous_earnings;
+
+
+--26:
+WITH current_works ("job_code", "pos_code", "per_id") AS
+	(SELECT "job_code", "pos_code", "per_id"
+	FROM "works" NATURAL JOIN "Job"
+	WHERE "start_date" <= current_date
+	AND ("end_date" >= current_date OR "end_date" IS NULL)),
+vacant_jobs("job_code", "pos_code") AS
+	((SELECT "job_code", "pos_code"
+	FROM "Job")
+	MINUS
+	(SELECT "job_code", "pos_code"
+	FROM current_works)),
+unemployed_people("per_id") AS
+	((SELECT "per_id"
+	FROM "Person")
+	MINUS
+	(SELECT "per_id"
+	FROM current_works)),
+current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires" NATURAL JOIN vacant_jobs),
+unmet_requires("per_id", "pos_code", "sk_code") AS
+	((SELECT "per_id", "pos_code", "sk_code"
+	FROM current_requires, unemployed_people)
+	MINUS
+	(SELECT "per_id", "pos_code", "sk_code"
+	FROM "Has_Skill", vacant_jobs)),
+qualified_people("pos_code", "per_id") AS
+	((SELECT "pos_code", "per_id"
+	FROM vacant_jobs, unemployed_people)
+	MINUS
+	(SELECT "pos_code", "per_id"
+	FROM unmet_requires)),
+fillable_vacancies ("pos_code", vacancy_count) AS
+	(SELECT "pos_code", COUNT(UNIQUE "job_code") - COUNT(UNIQUE "per_id")
+	FROM vacant_jobs NATURAL JOIN qualified_people
+	GROUP BY "pos_code")
+SELECT "pos_code", MAX(vacancy_count) AS Max_Vacancy_Count
+FROM fillable_vacancies
+GROUP BY "pos_code";
+
+--27:
+CREATE SEQUENCE course_set_seq
+	START WITH 1
+	INCREMENT BY 1
+	MAXVALUE 99999999
+	NOCYCLE;
+CREATE TABLE course_set (
+	CSET_ID NUMERIC(8,0),
+	C_CODE1 NUMERIC(8,0),
+	C_CODE2 NUMERIC(8,0),
+	C_CODE3 NUMERIC(8,0),
+	SET_SIZE NUMERIC(2,0),
+	PRIMARY KEY (CSET_ID)
+);
+INSERT INTO course_set
+	(SELECT course_set_seq.NEXTVAL, C1."c_code", C2."c_code",null, 2
+	FROM "Course" C1, "Course" C2
+	WHERE C1."c_code" < C2."c_code");
+INSERT INTO course_set
+	(SELECT course_set_seq.NEXTVAL, C1."c_code", C2."c_code", C3."c_code", 3
+	FROM "Course" C1, "Course" C2, "Course" C3
+	WHERE C1."c_code" < C2."c_code" AND C2."c_code" < C3."c_code");
+WITH course_set_skill ("CSET_ID", "sk_code") AS
+	((SELECT "CSET_ID", "sk_code"
+	FROM course_set JOIN "teaches" ON course_set."C_CODE1" = "teaches"."c_code")
+	UNION
+	(SELECT "CSET_ID", "sk_code"
+	FROM course_set JOIN "teaches" ON course_set."C_CODE2" =
+	"teaches"."c_code")
+	UNION
+	(SELECT "CSET_ID", "sk_code"
+	FROM course_set JOIN "teaches" ON course_set."C_CODE3" =
+	"teaches"."c_code")),
+current_requires ("pos_code", "sk_code") AS
+	(SELECT "pos_code", "sk_code"
+	FROM "requires"
+	WHERE "pos_code" = 'p_a1llj78ji4e3yt11'),
+unmet_requires("sk_code") AS
+((SELECT "sk_code"
+	FROM current_requires)
+	MINUS
+	(SELECT "sk_code"
+	FROM "Has_Skill"
+	WHERE "per_id" = 1234567)),
+unmet_covers("CSET_ID", "sk_code") AS
+	((SELECT "CSET_ID", "sk_code"
+	FROM course_set, unmet_requires)
+	MINUS
+	(SELECT "CSET_ID", "sk_code"
+	FROM course_set_skill)),
+cover_csets("CSET_ID") AS
+	((SELECT "CSET_ID"
+	FROM course_set)
+	MINUS
+	(SELECT "CSET_ID"
+	FROM unmet_covers))
+SELECT "C_CODE1", "C_CODE2", "C_CODE3"
+FROM cover_csets NATURAL JOIN course_set
+WHERE "SET_SIZE" = 
+	(SELECT MIN("SET_SIZE")
+	FROM cover_csets NATURAL JOIN course_set);
+DROP TABLE course_set;
+DROP SEQUENCE course_set_seq;
+
+--28:
+WITH per_skills("per_id", "sk_code") AS
+	(SELECT "per_id", "sk_code"
+	FROM "Has_Skill"
+	WHERE "per_id" = 5678910),
+per_courses("per_id", "c_code") AS
+	(SELECT "per_id", "c_code"
+	FROM TAKES
+	WHERE "per_id" IN 
+		(SELECT "per_id"
+		FROM per_skills)),
+missing_skills("sk_code") AS
+	((SELECT "sk_code"
+	FROM "Job" NATURAL JOIN "req_by_job"
+	WHERE "job_code" = 'ali727_2')
+	MINUS
+	(SELECT "sk_code"
+	FROM "Has_Skill"
+	WHERE "per_id" IN 
+		(SELECT "per_id"
+		FROM per_skills))),
+courses_needed("c_code", "title") AS
+	(SELECT DISTINCT "c_code", "title"
+	FROM "Course" NATURAL JOIN "teaches"
+	WHERE "sk_code" IN
+		(SELECT "sk_code"
+		FROM missing_skills)),
+prereqs("c_code", "title") AS
+	(SELECT DISTINCT pre."pre_id", c."title"
+	FROM courses_needed NATURAL JOIN "Prerequisite" pre INNER JOIN "Course" c ON pre."pre_id" = c."c_code")
+(SELECT DISTINCT *
+FROM prereqs) 
+UNION 
+(SELECT DISTINCT *
+FROM courses_needed);
+
+
+

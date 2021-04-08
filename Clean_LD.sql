@@ -1,0 +1,16 @@
+DROP TABLE "works";
+DROP TABLE "teaches";
+DROP TABLE "requires";
+DROP TABLE "req_by_job";
+DROP TABLE TAKES;
+DROP TABLE "Prerequisite";
+DROP TABLE "Has_Skill";
+DROP TABLE "Skill";
+DROP TABLE "Sections";
+DROP TABLE COMP_SUB_INDUS;
+DROP TABLE "Job";
+DROP TABLE "Pos";
+DROP TABLE "Person";
+DROP TABLE "Course";
+DROP TABLE "Company";
+DROP TABLE GICS;
